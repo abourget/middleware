@@ -9,7 +9,8 @@ import (
 
 // DeferPanic sets up the DeferPanic stats capture, error wrapper, panic recovery and http time
 // measurement.
-func DeferPanic(service goa.Service, key string) goa.Middleware {
+func DeferPanic(service goa.Service, keyGetter func() string) goa.Middleware {
+	key := keyGetter()
 	dps := deferstats.NewClient(key)
 	errorHandler := service.ErrorHandler()
 	service.SetErrorHandler(func(ctx *goa.Context, err error) {
