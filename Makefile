@@ -15,7 +15,8 @@ DEPEND=\
 	github.com/onsi/ginkgo \
 	github.com/onsi/ginkgo/ginkgo \
 	github.com/onsi/gomega \
- 	golang.org/x/tools/cmd/goimports
+ 	golang.org/x/tools/cmd/goimports \
+ 	github.com/dgrijalva/jwt-go
 
 .PHONY: goagen
 
