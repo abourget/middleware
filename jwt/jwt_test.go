@@ -3,6 +3,7 @@ package jwt_test
 import (
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,8 +28,7 @@ var _ = Describe("JWT Middleware", func() {
 	var err error
 	var token *jwtg.Token
 	var tokenString string
-	params := map[string]string{"param": "value"}
-	query := map[string][]string{"query": []string{"qvalue"}}
+	params := url.Values{"param": []string{"value"}, "query": []string{"qvalue"}}
 	payload := map[string]interface{}{"payload": 42}
 	validFunc := func(token *jwtg.Token) (interface{}, error) {
 		return signingKey, nil
@@ -38,7 +38,8 @@ var _ = Describe("JWT Middleware", func() {
 		req, err = http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(TestResponseWriter)
-		ctx = goa.NewContext(nil, req, rw, params, query, payload)
+		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
+		ctx.SetPayload(payload)
 		spec = &jwt.Specification{
 			AllowParam:     true,
 			ValidationFunc: validFunc,
@@ -53,7 +54,7 @@ var _ = Describe("JWT Middleware", func() {
 	It("requires a jwt token be present", func() {
 
 		h := func(ctx *goa.Context) error {
-			ctx.JSON(200, "ok")
+			ctx.Respond(200, "ok")
 			return nil
 		}
 		jw := jwt.Middleware(spec)(h)
@@ -66,7 +67,7 @@ var _ = Describe("JWT Middleware", func() {
 
 		req.Header.Set("Authorization", "bearer "+tokenString)
 		h := func(ctx *goa.Context) error {
-			ctx.JSON(200, "ok")
+			ctx.Respond(200, "ok")
 			return nil
 		}
 		jw := jwt.Middleware(spec)(h)
@@ -84,7 +85,7 @@ var _ = Describe("JWT Middleware", func() {
 
 		req.Header.Set("Authorization", "bearer "+tokenString)
 		h := func(ctx *goa.Context) error {
-			ctx.JSON(200, "ok")
+			ctx.Respond(200, "ok")
 			return nil
 		}
 		jw := jwt.Middleware(spec)(h)
@@ -102,13 +103,14 @@ var _ = Describe("JWT Middleware", func() {
 		req, err = http.NewRequest("POST", "/goo?token="+tokenString, strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(TestResponseWriter)
-		ctx = goa.NewContext(nil, req, rw, params, query, payload)
+		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
+		ctx.SetPayload(payload)
 		spec = &jwt.Specification{
 			AllowParam:     true,
 			ValidationFunc: validFunc,
 		}
 		h := func(ctx *goa.Context) error {
-			ctx.JSON(200, "ok")
+			ctx.Respond(200, "ok")
 			return nil
 		}
 		jw := jwt.Middleware(spec)(h)

@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+// TokenManager creates tokens given a JWT specification and claims.
 type TokenManager struct {
 	spec *Specification
 }

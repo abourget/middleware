@@ -13,15 +13,24 @@ import (
 type SigningMethod int
 
 const (
-	_                    = iota
+	_ = iota
+	// RSA256 signing algorithm
 	RSA256 SigningMethod = iota + 1
+	// RSA384 signing algorithm
 	RSA384
+	// RSA512 signing algorithm
 	RSA512
+	// HMAC256 signing algorithm
 	HMAC256
+	// HMAC384 signing algorithm
 	HMAC384
+	// HMAC512 signing algorithm
 	HMAC512
+	// ECDSA256 signing algorithm
 	ECDSA256
+	// ECDSA384 signing algorithm
 	ECDSA384
+	// ECDSA512 signing algorithm
 	ECDSA512
 )
 
@@ -44,7 +53,7 @@ func init() {
 // JWTKey is the JWT middleware key used to store the token in the context.
 const JWTKey middlewareKey = 0
 
-// JWTKey is the JWT middleware key used to store the token in the context.
+// TokenManagerKey is the JWT middleware key used to store the token manager in the context.
 const TokenManagerKey middlewareKey = 1
 
 // JWTHeader is the name of the header used to transmit the JWT token.

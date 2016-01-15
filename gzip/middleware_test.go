@@ -51,7 +51,8 @@ var _ = Describe("Gzip", func() {
 			ParentHeader: http.Header{},
 		}
 
-		ctx = goa.NewContext(nil, req, rw, params, payload)
+		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
+		ctx.SetPayload(payload)
 		handler = new(testHandler)
 		logger := log15.New("test", "test")
 		logger.SetHandler(handler)

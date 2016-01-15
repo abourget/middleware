@@ -26,14 +26,14 @@ var _ = Describe("Middleware", func() {
 
 		JustBeforeEach(func() {
 			goa.Log.SetHandler(log15.DiscardHandler())
-			service = goa.NewGraceful("").(*goa.GracefulApplication)
+			service = goa.NewGraceful("", false).(*goa.GracefulApplication)
 			spec, err := cors.New(dsl)
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
 			h := func(ctx *goa.Context) error { return ctx.Respond(200, nil) }
 			ctrl := service.NewController("test")
-			service.ServeMux().Handle(method, path, ctrl.HandleFunc("", h))
-			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler))
+			service.ServeMux().Handle(method, path, ctrl.HandleFunc("", h, nil))
+			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler, nil))
 			cors.MountPreflightController(service, spec)
 			portIndex++
 			port := 54511 + portIndex
