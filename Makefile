@@ -10,10 +10,19 @@
 # - "all" is the default target, it runs all the targets in the order above.
 #
 DIRS=$(shell go list -f {{.Dir}} ./...)
+DEPEND=\
+	github.com/golang/lint/golint \
+	github.com/onsi/ginkgo \
+	github.com/onsi/ginkgo/ginkgo \
+	github.com/onsi/gomega \
+ 	golang.org/x/tools/cmd/goimports
 
 .PHONY: goagen
 
-all: lint test
+all: depend lint test
+
+depend:
+	@go get $(DEPEND)
 
 lint:
 	@for d in $(DIRS) ; do \
