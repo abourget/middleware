@@ -53,7 +53,7 @@ func init() {
 // JWTKey is the JWT middleware key used to store the token in the context.
 const JWTKey middlewareKey = 0
 
-// JWTKey is the JWT middleware key used to store the token in the context.
+// TokenManagerKey is the JWT middleware key used to store the token manager in the context.
 const TokenManagerKey middlewareKey = 1
 
 // JWTHeader is the name of the header used to transmit the JWT token.
