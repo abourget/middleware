@@ -8,16 +8,16 @@ import (
 )
 
 type (
-	// JSONFactory uses encoding/json to act as an DecoderFactory and EncoderFactory
+	// JSONFactory uses github.com/ugorji/go/codec to act as an DecoderFactory and EncoderFactory
 	JSONFactory struct{}
 
-	// MsgPackFactory uses encoding/json to act as an DecoderFactory and EncoderFactory
+	// MsgPackFactory uses github.com/ugorji/go/codec to act as an DecoderFactory and EncoderFactory
 	MsgPackFactory struct{}
 
-	// BincFactory uses encoding/json to act as an DecoderFactory and EncoderFactory
+	// BincFactory uses github.com/ugorji/go/codec to act as an DecoderFactory and EncoderFactory
 	BincFactory struct{}
 
-	// CborFactory uses encoding/json to act as an DecoderFactory and EncoderFactory
+	// CborFactory uses github.com/ugorji/go/codec to act as an DecoderFactory and EncoderFactory
 	CborFactory struct{}
 )
 
