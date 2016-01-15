@@ -118,7 +118,7 @@ func MountPreflightController(service goa.Service, spec Specification) {
 				return ctx.Respond(200, nil)
 			}
 			ctrl := service.NewController("cors")
-			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", h))
+			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", h, nil))
 		}
 	}
 }
