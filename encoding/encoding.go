@@ -27,6 +27,12 @@ var (
 	mh codec.MsgpackHandle
 	bh codec.BincHandle
 	ch codec.CborHandle
+
+	// JSONDecoder is the default factory used by the goa `Consumes` DSL
+	JSONDecoder = JSONFactory{}
+
+	// JSONEncoder is the default factory used by the goa `Produces` DSL
+	JSONEncoder = JSONFactory{}
 )
 
 // NewDecoder returns a new json.Decoder that satisfies goa.ResettableDecoder
