@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/raphael/goa"
+	"github.com/goadesign/goa"
 
 	log "gopkg.in/inconshreveable/log15.v2"
 

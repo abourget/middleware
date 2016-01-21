@@ -10,10 +10,10 @@ import (
 
 	"gopkg.in/inconshreveable/log15.v2"
 
+	"github.com/goadesign/goa"
+	"github.com/goadesign/goa-middleware/middleware"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/raphael/goa"
-	"github.com/raphael/goa-middleware/middleware"
 )
 
 var _ = Describe("NewMiddleware", func() {

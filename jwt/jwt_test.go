@@ -8,10 +8,10 @@ import (
 	"time"
 
 	jwtg "github.com/dgrijalva/jwt-go"
+	"github.com/goadesign/goa"
+	"github.com/goadesign/goa-middleware/jwt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/raphael/goa"
-	"github.com/raphael/goa-middleware/jwt"
 )
 
 var signingKey = []byte("jwtsecretsauce")

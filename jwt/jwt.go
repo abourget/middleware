@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/raphael/goa"
+	"github.com/goadesign/goa"
 )
 
 // SigningMethod is the enum that lists the supported token signature hashing algorithms.

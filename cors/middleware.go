@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/raphael/goa"
+	"github.com/goadesign/goa"
 )
 
 const (

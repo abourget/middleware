@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/goadesign/goa"
+	"github.com/goadesign/goa-middleware/cors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/raphael/goa"
-	"github.com/raphael/goa-middleware/cors"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 

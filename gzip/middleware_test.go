@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/goadesign/goa"
+	gzm "github.com/goadesign/goa-middleware/gzip"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/raphael/goa"
-	gzm "github.com/raphael/goa-middleware/gzip"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 

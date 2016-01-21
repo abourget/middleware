@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/raphael/goa"
+	"github.com/goadesign/goa"
 )
 
 type (

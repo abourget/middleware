@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/raphael/goa"
+	"github.com/goadesign/goa"
 )
 
 // These compression constants are copied from the compress/gzip package.
