@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/goadesign/goa"
-	gzm "github.com/goadesign/goa-middleware/gzip"
+	gzm "github.com/goadesign/middleware/gzip"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/inconshreveable/log15.v2"

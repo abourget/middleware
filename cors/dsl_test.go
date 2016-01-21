@@ -2,7 +2,7 @@ package cors_test
 
 import (
 	"github.com/goadesign/goa"
-	"github.com/goadesign/goa-middleware/cors"
+	"github.com/goadesign/middleware/cors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

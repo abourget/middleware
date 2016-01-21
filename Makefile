@@ -1,6 +1,6 @@
 #! /usr/bin/make
 #
-# Makefile for goa-middleware
+# Makefile for middleware
 #
 # Targets:
 # - "lint" runs the linter and checks the code format using goimports
