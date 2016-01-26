@@ -2,7 +2,9 @@
 
 This repository contains middlewares for the [goa](http://goa.design) web application framework.
 
-[![Build Status](https://travis-ci.org/raphael/middleware.svg?branch=master)](https://travis-ci.org/raphael/middleware)
+[![Build Status](https://travis-ci.org/goadesign/middleware.svg?branch=master)](https://travis-ci.org/goadesign/middleware)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/goadesign/middleware/blob/master/LICENSE)
+[![Godoc](https://godoc.org/github.com/goadesign/middleware?status.svg)](http://godoc.org/github.com/goadesign/middleware)
 
 The `middleware` package provides middlewares that do not depend on additional packages other than
 the ones already used by `goa`. These middlewares provide functionality that is useful to most
@@ -39,7 +41,7 @@ Other middlewares listed below are provided as separate Go packages.
 
 #### JWT
 
-Package [jwt](https://godoc.org/github.com/goadesign/middleware/jwt) contributed by @bketelsen
+Package [jwt](https://godoc.org/github.com/goadesign/middleware/jwt) contributed by [@bketelsen](https://github.com/bketelsen)
 adds the ability for goa services to use [JSON Web Token](http://jwt.io/) authorization.
 
 #### CORS
@@ -50,7 +52,7 @@ to goa services.
 
 #### Gzip
 
-Package [gzip](https://godoc.org/github.com/goadesign/middleware/gzip) contributed by @tylerb adds the ability to compress response bodies using gzip format as specified in RFC 1952.
+Package [gzip](https://godoc.org/github.com/goadesign/middleware/gzip) contributed by [@tylerb](https://github.com/tylerb) adds the ability to compress response bodies using gzip format as specified in RFC 1952.
 
 #### Defer Panic
 
