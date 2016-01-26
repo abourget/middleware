@@ -40,5 +40,6 @@ using the same specification used to create the middleware:
 		}
 		return ctx.Respond(200, token) // You'll probably need something different here
 	}
+
 */
 package jwt
