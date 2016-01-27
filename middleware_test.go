@@ -158,6 +158,7 @@ var _ = Describe("LogRequest", func() {
 
 	BeforeEach(func() {
 		service = goa.New("test")
+		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
 		req, err := http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(testResponseWriter)
