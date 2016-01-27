@@ -295,10 +295,12 @@ var _ = Describe("RequireHeader", func() {
 
 	BeforeEach(func() {
 		var err error
+		service := goa.New("test")
+		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
 		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(testResponseWriter)
-		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
+		ctx = goa.NewContext(nil, service, req, rw, params)
 		ctx.SetPayload(payload)
 		handler = new(testHandler)
 		logger := log15.New("test", "test")
