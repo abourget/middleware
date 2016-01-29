@@ -253,7 +253,7 @@ func RequireHeader(
 				if matched {
 					err = h(ctx)
 				} else {
-					err = ctx.RespondBytes(failureStatus, []byte(http.StatusText(failureStatus)))
+					err = ctx.Respond(failureStatus, http.StatusText(failureStatus))
 				}
 			} else {
 				err = h(ctx)

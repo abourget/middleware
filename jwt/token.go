@@ -8,6 +8,12 @@ import (
 )
 
 // TokenManager creates tokens given a JWT specification and claims.
+const (
+	ttldefault        = 5
+	refreshttldefault = 1440 // default to one day
+)
+
+// TokenManager provides for the creation of access and refresh JWT Tokens
 type TokenManager struct {
 	spec *Specification
 }
@@ -17,7 +23,10 @@ type TokenManager struct {
 // Middleware() to ensure your tokens are compatible.
 func NewTokenManager(spec *Specification) *TokenManager {
 	if spec.TTLMinutes == 0 {
-		spec.TTLMinutes = 5
+		spec.TTLMinutes = ttldefault
+	}
+	if spec.RefreshTTLMinutes == 0 {
+		spec.RefreshTTLMinutes = refreshttldefault
 	}
 	return &TokenManager{spec: spec}
 }
