@@ -4,7 +4,6 @@ go:
   - 1.5
   - tip
 
->>>>>>> 6c6ee4081a6141a08a96f9b4d88e7d6a99ca286c
 sudo: false
 install:
 - go get -v ./...
