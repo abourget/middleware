@@ -11,16 +11,26 @@
 #
 DIRS=$(shell go list -f {{.Dir}} ./...)
 DEPEND=\
+ 	github.com/dgrijalva/jwt-go \
+	github.com/goadesign/goa.design/mdc \
+	github.com/goadesign/godoc2md \
 	github.com/golang/lint/golint \
 	github.com/onsi/ginkgo \
 	github.com/onsi/ginkgo/ginkgo \
 	github.com/onsi/gomega \
- 	golang.org/x/tools/cmd/goimports \
- 	github.com/dgrijalva/jwt-go
-
-.PHONY: goagen
+	github.com/spf13/hugo \
+ 	golang.org/x/tools/cmd/goimports
 
 all: depend lint test
+
+docs:
+	@git clone https://github.com/goadesign/goa.design
+	@rm -rf goa.design/content/godoc goa.design/public
+	@mdc github.com/goadesign/middleware goa.design/content/godoc --exclude goa.design
+	@cd goa.design && hugo --theme goa
+	@rm -rf public
+	@mv goa.design/public public
+	@rm -rf goa.design
 
 depend:
 	@go get $(DEPEND)
