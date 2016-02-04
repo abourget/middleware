@@ -22,5 +22,6 @@ deploy:
   local-dir: public/godoc/middleware
   upload-dir: public/godoc/middleware
   skip-cleanup: true
+  acl: public-read
   on:
     repo: goadesign/middleware
