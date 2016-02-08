@@ -12,7 +12,7 @@
 DIRS=$(shell go list -f {{.Dir}} ./...)
 DEPEND=\
  	github.com/dgrijalva/jwt-go \
-	github.com/goadesign/goa.design/mdc \
+	github.com/goadesign/goa.design/tools/mdc \
 	github.com/goadesign/godoc2md \
 	github.com/golang/lint/golint \
 	github.com/onsi/ginkgo \
