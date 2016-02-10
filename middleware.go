@@ -165,7 +165,7 @@ func Recover() goa.Middleware {
 									http.StatusText(status),
 									reqID)
 							}
-							ctx.Logger.Error("panic", "err", err, "stack", stack)
+							ctx.Logger.Error("panic", "err", err, "stack", strings.Join(stack, "\n"))
 						}
 
 						// note we must respond or else a 500 with "unhandled request" is the
