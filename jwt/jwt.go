@@ -98,6 +98,9 @@ type Specification struct {
 	AuthOptions bool
 	// TTLMinutes is the TTL for tokens that are generated
 	TTLMinutes int
+	// RefreshTTLMinutes is the TTL for refresh tokens that are generated
+	// and should generally be much longer than TTLMinutes
+	RefreshTTLMinutes int
 	// Issuer is the name of the issuer that will be inserted into the
 	// generated token's claims
 	Issuer string
@@ -119,14 +122,14 @@ func GetToken(ctx *goa.Context, spec *Specification) (token *jwt.Token, err erro
 	if header != "" {
 		parts := strings.Split(header, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			// This is an error
+			err = fmt.Errorf("Malformed token header")
+			return
 		}
 		tok = parts[1]
 		found = true
 	}
 	if !found && spec.AllowParam {
 		tok = ctx.Request().URL.Query().Get(spec.TokenParam)
-
 	}
 	if tok == "" {
 		err = fmt.Errorf("no token")
@@ -156,16 +159,13 @@ func Middleware(spec *Specification) goa.Middleware {
 			}
 			token, err := GetToken(ctx, spec)
 			if err != nil {
-				return ctx.Respond(http.StatusUnauthorized, []byte(http.StatusText(http.StatusUnauthorized)))
+				return ctx.Respond(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 			}
-			if token.Valid {
-				ctx.SetValue(JWTKey, token)
-			} else {
-				msg := "Invalid Token"
-				err = ctx.Respond(http.StatusUnauthorized, []byte(msg))
-				return err
+			if !token.Valid {
+				return ctx.Respond(http.StatusUnauthorized, "Invalid Token")
 			}
 
+			ctx.SetValue(JWTKey, token)
 			return h(ctx)
 		}
 

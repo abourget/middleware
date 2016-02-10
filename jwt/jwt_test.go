@@ -38,7 +38,9 @@ var _ = Describe("JWT Middleware", func() {
 		req, err = http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(TestResponseWriter)
-		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
+		s := goa.New("test")
+		s.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
+		ctx = goa.NewContext(nil, s, req, rw, params)
 		ctx.SetPayload(payload)
 		spec = &jwt.Specification{
 			AllowParam:     true,
