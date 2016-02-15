@@ -15,8 +15,6 @@ import (
 
 	"github.com/goadesign/goa"
 
-	log "gopkg.in/inconshreveable/log15.v2"
-
 	"golang.org/x/net/context"
 )
 
@@ -52,36 +50,46 @@ type middlewareKey int
 // LogRequest creates a request logger middleware.
 // This middleware is aware of the RequestID middleware and if registered after it leverages the
 // request ID for logging.
-func LogRequest() goa.Middleware {
+// If verbose is true then the middlware logs the request and response bodies.
+func LogRequest(verbose bool) goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) error {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			reqID := ctx.Value(ReqIDKey)
 			if reqID == nil {
 				reqID = shortID()
 			}
-			ctx.Logger = ctx.Logger.New("id", reqID)
+			ctx = goa.NewLogContext(ctx, goa.KV{"id", reqID})
 			startedAt := time.Now()
-			r := ctx.Request()
-			ctx.Info("started", r.Method, r.URL.String())
-			params := ctx.AllParams()
-			if len(params) > 0 {
-				logCtx := make(log.Ctx, len(params))
-				for k, v := range params {
-					logCtx[k] = interface{}(v)
+			r := goa.Request(ctx)
+			goa.Log.Info(ctx, "started", goa.KV{r.Method, r.URL.String()})
+			if verbose {
+				if len(r.Params) > 0 {
+					logCtx := make([]goa.KV, len(r.Params))
+					i := 0
+					for k, v := range r.Params {
+						logCtx[i] = goa.KV{k, interface{}(v)}
+						i++
+					}
+					goa.Log.Info(ctx, "params", logCtx...)
 				}
-				ctx.Debug("params", logCtx)
-			}
-			payload := ctx.RawPayload()
-			if r.ContentLength > 0 {
-				if mp, ok := payload.(map[string]interface{}); ok {
-					ctx.Debug("payload", log.Ctx(mp))
-				} else {
-					ctx.Debug("payload", "raw", payload)
+				if r.ContentLength > 0 {
+					if mp, ok := r.Payload.(map[string]interface{}); ok {
+						logCtx := make([]goa.KV, len(mp))
+						i := 0
+						for k, v := range mp {
+							logCtx[i] = goa.KV{k, interface{}(v)}
+							i++
+						}
+						goa.Log.Info(ctx, "payload", logCtx...)
+					} else {
+						goa.Log.Info(ctx, "payload", goa.KV{"raw", r.Payload})
+					}
 				}
 			}
-			err := h(ctx)
-			ctx.Info("completed", "status", ctx.ResponseStatus(),
-				"bytes", ctx.ResponseLength(), "time", time.Since(startedAt).String())
+			err := h(ctx, rw, req)
+			resp := goa.Response(ctx)
+			goa.Log.Info(ctx, "completed", goa.KV{"status", resp.Status},
+				goa.KV{"bytes", resp.Length}, goa.KV{"time", time.Since(startedAt).String()})
 			return err
 		}
 	}
@@ -92,12 +100,12 @@ func LogRequest() goa.Middleware {
 // are logged elsewhere (i.e. by the LogRequest middleware).
 type loggingResponseWriter struct {
 	http.ResponseWriter
-	ctx *goa.Context
+	ctx context.Context
 }
 
 // Write will write raw data to logger and response writer.
 func (lrw *loggingResponseWriter) Write(buf []byte) (int, error) {
-	lrw.ctx.Logger.Debug("response", "raw", string(buf))
+	goa.Log.Info(lrw.ctx, "response", goa.KV{"raw", string(buf)})
 	return lrw.ResponseWriter.Write(buf)
 }
 
@@ -105,15 +113,17 @@ func (lrw *loggingResponseWriter) Write(buf []byte) (int, error) {
 // Only Logs the raw response data without accumulating any statistics.
 func LogResponse() goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) error {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			// chain a new logging writer to the current response writer.
-			ctx.SetResponseWriter(
+			resp := goa.Response(ctx)
+			resp.SwitchWriter(
 				&loggingResponseWriter{
-					ResponseWriter: ctx.SetResponseWriter(nil),
-					ctx:            ctx})
+					ResponseWriter: resp.SwitchWriter(nil),
+					ctx:            ctx,
+				})
 
 			// next
-			return h(ctx)
+			return h(ctx, rw, req)
 		}
 	}
 }
@@ -123,14 +133,14 @@ func LogResponse() goa.Middleware {
 // that value is used else a random value is generated.
 func RequestID() goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) error {
-			id := ctx.Request().Header.Get(RequestIDHeader)
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			id := req.Header.Get(RequestIDHeader)
 			if id == "" {
 				id = fmt.Sprintf("%s-%d", reqPrefix, atomic.AddInt64(&reqID, 1))
 			}
-			ctx.SetValue(ReqIDKey, id)
+			ctx = context.WithValue(ctx, ReqIDKey, id)
 
-			return h(ctx)
+			return h(ctx, rw, req)
 		}
 	}
 }
@@ -138,7 +148,7 @@ func RequestID() goa.Middleware {
 // Recover is a middleware that recovers panics and returns an internal error response.
 func Recover() goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) (err error) {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx != nil {
@@ -157,16 +167,14 @@ func Recover() goa.Middleware {
 						stack := lines[3:]
 						status := http.StatusInternalServerError
 						var message string
-						if ctx.Logger != nil {
-							reqID := ctx.Value(ReqIDKey)
-							if reqID != nil {
-								message = fmt.Sprintf(
-									"%s\nRefer to the following token when contacting support: %s",
-									http.StatusText(status),
-									reqID)
-							}
-							ctx.Logger.Error("panic", "err", err, "stack", strings.Join(stack, "\n"))
+						reqID := ctx.Value(ReqIDKey)
+						if reqID != nil {
+							message = fmt.Sprintf(
+								"%s\nRefer to the following token when contacting support: %s",
+								http.StatusText(status),
+								reqID)
 						}
+						goa.Log.Error(ctx, "panic", goa.KV{"err", err}, goa.KV{"stack", strings.Join(stack, "\n")})
 
 						// note we must respond or else a 500 with "unhandled request" is the
 						// default response.
@@ -177,11 +185,13 @@ func Recover() goa.Middleware {
 							// the source code.
 							message = err.Error()
 						}
-						ctx.RespondBytes(status, []byte(message))
+						resp := goa.Response(ctx)
+						resp.WriteHeader(status)
+						resp.Write([]byte(message))
 					}
 				}
 			}()
-			return h(ctx)
+			return h(ctx, rw, req)
 		}
 	}
 }
@@ -217,11 +227,11 @@ func Recover() goa.Middleware {
 // Controller actions can check if a timeout is set by calling the context Deadline method.
 func Timeout(timeout time.Duration) goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) (err error) {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			// We discard the cancel function because the goa handler already takes
 			// care of canceling on completion.
-			ctx.Context, _ = context.WithTimeout(ctx.Context, timeout)
-			return h(ctx)
+			nctx, _ := context.WithTimeout(ctx, timeout)
+			return h(nctx, rw, req)
 		}
 	}
 }
@@ -238,11 +248,10 @@ func RequireHeader(
 	failureStatus int) goa.Middleware {
 
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) (err error) {
-			if pathPattern == nil || pathPattern.MatchString(ctx.Request().URL.Path) {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
+			if pathPattern == nil || pathPattern.MatchString(req.URL.Path) {
 				matched := false
-				header := ctx.Request().Header
-				headerValue := header.Get(requiredHeaderName)
+				headerValue := req.Header.Get(requiredHeaderName)
 				if len(headerValue) > 0 {
 					if requiredHeaderValue == nil {
 						matched = true
@@ -251,12 +260,13 @@ func RequireHeader(
 					}
 				}
 				if matched {
-					err = h(ctx)
+					err = h(ctx, rw, req)
 				} else {
-					err = ctx.Respond(failureStatus, http.StatusText(failureStatus))
+					resp := goa.Response(ctx)
+					err = resp.Send(failureStatus, http.StatusText(failureStatus))
 				}
 			} else {
-				err = h(ctx)
+				err = h(ctx, rw, req)
 			}
 			return
 		}
