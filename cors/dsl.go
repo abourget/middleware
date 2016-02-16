@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/goadesign/goa"
+	"golang.org/x/net/context"
 )
 
 type (
 	// CheckFunc is the signature of the user provided function invoked by the middleware to
 	// check whether to handle CORS headers.
-	CheckFunc func(*goa.Context) bool
+	CheckFunc func(context.Context) bool
 
 	// ResourceDefinition represents a CORS resource as defined by its path (or path prefix).
 	ResourceDefinition struct {

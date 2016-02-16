@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/net/context"
+
 	"github.com/goadesign/goa"
 )
 
@@ -58,19 +60,19 @@ func Middleware(level int) goa.Middleware {
 		},
 	}
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) (err error) {
-			r := ctx.Request()
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			// Skip compression if the client doesn't accept gzip encoding, is
 			// requesting a WebSocket or the data is already compressed.
-			if !strings.Contains(r.Header.Get(headerAcceptEncoding), encodingGzip) ||
-				len(r.Header.Get(headerSecWebSocketKey)) > 0 ||
-				ctx.Header().Get(headerContentEncoding) == encodingGzip {
-				return h(ctx)
+			if !strings.Contains(req.Header.Get(headerAcceptEncoding), encodingGzip) ||
+				len(req.Header.Get(headerSecWebSocketKey)) > 0 ||
+				req.Header.Get(headerContentEncoding) == encodingGzip {
+				return h(ctx, rw, req)
 			}
 
 			// Set the appropriate gzip headers.
-			ctx.Header().Set(headerContentEncoding, encodingGzip)
-			ctx.Header().Set(headerVary, headerAcceptEncoding)
+			resp := goa.Response(ctx)
+			resp.Header().Set(headerContentEncoding, encodingGzip)
+			resp.Header().Set(headerVary, headerAcceptEncoding)
 
 			// Retrieve gzip writer from the pool. Reset it to use the ResponseWriter.
 			// This allows us to re-use an already allocated buffer rather than
@@ -78,7 +80,7 @@ func Middleware(level int) goa.Middleware {
 			gz := gzipPool.Get().(*gzip.Writer)
 
 			// Get the original http.ResponseWriter
-			w := ctx.SetResponseWriter(nil)
+			w := resp.SwitchWriter(nil)
 			// Reset our gzip writer to use the http.ResponseWriter
 			gz.Reset(w)
 
@@ -89,11 +91,11 @@ func Middleware(level int) goa.Middleware {
 			}
 
 			// Set the new http.ResponseWriter
-			ctx.SetResponseWriter(grw)
+			resp.SwitchWriter(grw)
 
 			// Call the next handler supplying the gzipResponseWriter instead of
 			// the original.
-			err = h(ctx)
+			err = h(ctx, rw, req)
 			if err != nil {
 				return
 			}

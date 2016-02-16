@@ -61,7 +61,7 @@ func LogRequest(verbose bool) goa.Middleware {
 			ctx = goa.NewLogContext(ctx, goa.KV{"id", reqID})
 			startedAt := time.Now()
 			r := goa.Request(ctx)
-			goa.Log.Info(ctx, "started", goa.KV{r.Method, r.URL.String()})
+			goa.Info(ctx, "started", goa.KV{r.Method, r.URL.String()})
 			if verbose {
 				if len(r.Params) > 0 {
 					logCtx := make([]goa.KV, len(r.Params))
@@ -70,7 +70,7 @@ func LogRequest(verbose bool) goa.Middleware {
 						logCtx[i] = goa.KV{k, interface{}(v)}
 						i++
 					}
-					goa.Log.Info(ctx, "params", logCtx...)
+					goa.Info(ctx, "params", logCtx...)
 				}
 				if r.ContentLength > 0 {
 					if mp, ok := r.Payload.(map[string]interface{}); ok {
@@ -80,15 +80,15 @@ func LogRequest(verbose bool) goa.Middleware {
 							logCtx[i] = goa.KV{k, interface{}(v)}
 							i++
 						}
-						goa.Log.Info(ctx, "payload", logCtx...)
+						goa.Info(ctx, "payload", logCtx...)
 					} else {
-						goa.Log.Info(ctx, "payload", goa.KV{"raw", r.Payload})
+						goa.Info(ctx, "payload", goa.KV{"raw", r.Payload})
 					}
 				}
 			}
 			err := h(ctx, rw, req)
 			resp := goa.Response(ctx)
-			goa.Log.Info(ctx, "completed", goa.KV{"status", resp.Status},
+			goa.Info(ctx, "completed", goa.KV{"status", resp.Status},
 				goa.KV{"bytes", resp.Length}, goa.KV{"time", time.Since(startedAt).String()})
 			return err
 		}
@@ -105,7 +105,7 @@ type loggingResponseWriter struct {
 
 // Write will write raw data to logger and response writer.
 func (lrw *loggingResponseWriter) Write(buf []byte) (int, error) {
-	goa.Log.Info(lrw.ctx, "response", goa.KV{"raw", string(buf)})
+	goa.Info(lrw.ctx, "response", goa.KV{"raw", string(buf)})
 	return lrw.ResponseWriter.Write(buf)
 }
 
@@ -174,7 +174,7 @@ func Recover() goa.Middleware {
 								http.StatusText(status),
 								reqID)
 						}
-						goa.Log.Error(ctx, "panic", goa.KV{"err", err}, goa.KV{"stack", strings.Join(stack, "\n")})
+						goa.Error(ctx, "panic", goa.KV{"err", err}, goa.KV{"stack", strings.Join(stack, "\n")})
 
 						// note we must respond or else a 500 with "unhandled request" is the
 						// default response.
@@ -185,9 +185,8 @@ func Recover() goa.Middleware {
 							// the source code.
 							message = err.Error()
 						}
-						resp := goa.Response(ctx)
-						resp.WriteHeader(status)
-						resp.Write([]byte(message))
+						rw.WriteHeader(status)
+						rw.Write([]byte(message))
 					}
 				}
 			}()

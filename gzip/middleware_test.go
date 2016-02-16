@@ -5,14 +5,14 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
+
+	"golang.org/x/net/context"
 
 	"github.com/goadesign/goa"
 	gzm "github.com/goadesign/middleware/gzip"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
 type TestResponseWriter struct {
@@ -35,11 +35,9 @@ func (t *TestResponseWriter) WriteHeader(s int) {
 }
 
 var _ = Describe("Gzip", func() {
-	var handler *testHandler
-	var ctx *goa.Context
+	var ctx context.Context
 	var req *http.Request
 	var rw *TestResponseWriter
-	params := url.Values{"param": []string{"value"}}
 	payload := map[string]interface{}{"payload": 42}
 
 	BeforeEach(func() {
@@ -51,24 +49,22 @@ var _ = Describe("Gzip", func() {
 			ParentHeader: http.Header{},
 		}
 
-		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
-		ctx.SetPayload(payload)
-		handler = new(testHandler)
-		logger := log15.New("test", "test")
-		logger.SetHandler(handler)
-		ctx.Logger = logger
+		ctx = goa.NewContext(nil, goa.New("test"), rw, req, nil)
+		goa.Request(ctx).Payload = payload
 	})
 
 	It("encodes response using gzip", func() {
-		h := func(ctx *goa.Context) error {
-			ctx.Write([]byte("gzip me!"))
-			ctx.WriteHeader(http.StatusOK)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			resp := goa.Response(ctx)
+			resp.Write([]byte("gzip me!"))
+			resp.WriteHeader(http.StatusOK)
 			return nil
 		}
 		t := gzm.Middleware(gzip.BestCompression)(h)
-		err := t(ctx)
+		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(ctx.ResponseStatus()).Should(Equal(http.StatusOK))
+		resp := goa.Response(ctx)
+		Ω(resp.Status).Should(Equal(http.StatusOK))
 
 		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
 		Ω(err).ShouldNot(HaveOccurred())
@@ -79,12 +75,3 @@ var _ = Describe("Gzip", func() {
 	})
 
 })
-
-type testHandler struct {
-	Records []*log15.Record
-}
-
-func (t *testHandler) Log(r *log15.Record) error {
-	t.Records = append(t.Records, r)
-	return nil
-}

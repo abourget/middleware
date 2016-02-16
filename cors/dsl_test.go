@@ -1,10 +1,10 @@
 package cors_test
 
 import (
-	"github.com/goadesign/goa"
 	"github.com/goadesign/middleware/cors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("valid CORS DSL", func() {
@@ -183,7 +183,7 @@ var _ = Describe("valid CORS DSL", func() {
 		})
 
 		Context("Check", func() {
-			check := cors.CheckFunc(func(*goa.Context) bool { return false })
+			check := cors.CheckFunc(func(context.Context) bool { return false })
 
 			BeforeEach(func() {
 				dsl = func() {

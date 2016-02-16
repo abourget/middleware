@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"github.com/goadesign/goa"
 )
 
@@ -22,8 +24,8 @@ const (
 // Middleware returns a goa middleware which implements the given CORS specification.
 func Middleware(spec Specification) goa.Middleware {
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) error {
-			header := ctx.Request().Header
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			header := req.Header
 			origin := header.Get("Origin")
 			if origin == "" {
 				origin = header.Get("X-Origin")
@@ -37,7 +39,7 @@ func Middleware(spec Specification) goa.Middleware {
 					goto handleCORS
 				}
 				acMethod := strings.ToUpper(header.Get(acRequestMethod))
-				if ctx.Request().Method != "OPTIONS" || acMethod == "" {
+				if req.Method != "OPTIONS" || acMethod == "" {
 					goto handleCORS
 				}
 				found := false
@@ -51,7 +53,7 @@ func Middleware(spec Specification) goa.Middleware {
 					goto handleCORS
 				}
 				// We are responding to a preflight request.
-				headers := ctx.Request().Header[acRequestHeaders]
+				headers := header[acRequestHeaders]
 				if len(headers) > 0 {
 					ok := false
 					for _, h := range headers {
@@ -69,34 +71,35 @@ func Middleware(spec Specification) goa.Middleware {
 						goto handleCORS
 					}
 				}
-				ctx.Header().Set("Content-Type", "text/plain")
+				resp := goa.Response(ctx)
+				resp.Header().Set("Content-Type", "text/plain")
 				if res.Origin == "*" && !res.Credentials {
 					originHeader = "*"
 				}
-				res.FillHeaders(originHeader, ctx.Header())
+				res.FillHeaders(originHeader, resp.Header())
 				if reqHeaders := header[acRequestHeaders]; reqHeaders != nil {
-					ctx.Header().Set(acAllowHeaders, strings.Join(reqHeaders, ", "))
+					resp.Header().Set(acAllowHeaders, strings.Join(reqHeaders, ", "))
 				}
-				return ctx.Respond(200, nil)
+				resp.WriteHeader(200)
 			}
 		handleCORS:
 			if res != nil {
 				// Apply CORS headers if CORS request
-				res.FillHeaders(originHeader, ctx.Header())
+				res.FillHeaders(originHeader, goa.Response(ctx).Header())
 			} else {
-				res = spec.PathResource(ctx.Request().URL.Path)
+				res = spec.PathResource(req.URL.Path)
 			}
 			if res != nil {
 				// Now apply Vary header (always)
-				v := ctx.Request().Header["Vary"]
+				v := header["Vary"]
 				if len(res.Vary) > 0 {
 					v = append(v, res.Vary...)
 				} else {
 					v = append(v, "Origin")
 				}
-				ctx.Header()["Vary"] = v
+				header["Vary"] = v
 			}
-			return h(ctx)
+			return h(ctx, rw, req)
 		}
 	}
 }
@@ -114,8 +117,9 @@ func MountPreflightController(service goa.Service, spec Specification) {
 		}
 		handle := service.ServeMux().Lookup("OPTIONS", path)
 		if handle == nil {
-			h := func(ctx *goa.Context) error {
-				return ctx.Respond(200, nil)
+			h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+				goa.Response(ctx).WriteHeader(200)
+				return nil
 			}
 			ctrl := service.NewController("cors")
 			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", h, nil))
@@ -156,8 +160,8 @@ func (res *ResourceDefinition) PathMatches(path string) bool {
 }
 
 // RequestResource returns the resource targeted by the CORS request defined in ctx.
-func (v Specification) RequestResource(ctx *goa.Context, origin string) *ResourceDefinition {
-	path := ctx.Request().URL.Path
+func (v Specification) RequestResource(ctx context.Context, origin string) *ResourceDefinition {
+	path := goa.Request(ctx).URL.Path
 	var match *ResourceDefinition
 	for _, res := range v {
 		if res.OriginAllowed(origin) && res.PathMatches(path) {
