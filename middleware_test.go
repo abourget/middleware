@@ -75,7 +75,7 @@ var _ = Describe("NewMiddleware", func() {
 		Context("using a goa handler", func() {
 			BeforeEach(func() {
 				var goaHandler goa.Handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					return goa.Response(ctx).Send(200, "ok")
+					return goa.Response(ctx).Send(ctx, 200, "ok")
 				}
 				input = goaHandler
 			})
@@ -91,7 +91,7 @@ var _ = Describe("NewMiddleware", func() {
 		Context("using a goa handler func", func() {
 			BeforeEach(func() {
 				input = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					return goa.Response(ctx).Send(200, "ok")
+					return goa.Response(ctx).Send(ctx, 200, "ok")
 				}
 			})
 
@@ -111,7 +111,7 @@ var _ = Describe("NewMiddleware", func() {
 			It("wraps it in a middleware", func() {
 				Ω(mErr).ShouldNot(HaveOccurred())
 				h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
-					return goa.Response(ctx).Send(200, "ok")
+					return goa.Response(ctx).Send(ctx, 200, "ok")
 				}
 				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
 				Ω(goa.Response(ctx).Status).Should(Equal(200))
@@ -183,7 +183,7 @@ var _ = Describe("LogRequest", func() {
 
 	It("logs requests", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			return goa.Response(ctx).Send(200, "ok")
+			return goa.Response(ctx).Send(ctx, 200, "ok")
 		}
 		lg := middleware.LogRequest(true)(h)
 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
@@ -195,7 +195,7 @@ var _ = Describe("LogRequest", func() {
 
 		Ω(logger.InfoEntries[1].Data).Should(HaveLen(1))
 		Ω(logger.InfoEntries[1].Data[0].Key).Should(Equal("query"))
-		Ω(logger.InfoEntries[1].Data[0].Value).Should(Equal([]string{"value"}))
+		Ω(logger.InfoEntries[1].Data[0].Value).Should(Equal("value"))
 
 		Ω(logger.InfoEntries[2].Data).Should(HaveLen(1))
 		Ω(logger.InfoEntries[2].Data[0].Key).Should(Equal("payload"))
@@ -268,7 +268,7 @@ var _ = Describe("RequestID", func() {
 		var newCtx context.Context
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			newCtx = ctx
-			return goa.Response(ctx).Send(200, "ok")
+			return goa.Response(ctx).Send(ctx, 200, "ok")
 		}
 		rg := middleware.RequestID()(h)
 		Ω(rg(ctx, rw, req)).ShouldNot(HaveOccurred())
@@ -304,7 +304,7 @@ var _ = Describe("Timeout", func() {
 		var newCtx context.Context
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			newCtx = ctx
-			return goa.Response(ctx).Send(200, "ok")
+			return goa.Response(ctx).Send(ctx, 200, "ok")
 		}
 		t := middleware.Timeout(time.Duration(1))(h)
 		err = t(ctx, rw, req)
@@ -335,7 +335,7 @@ var _ = Describe("RequireHeader", func() {
 		var newCtx context.Context
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			newCtx = ctx
-			return goa.Response(ctx).Send(http.StatusOK, "ok")
+			return goa.Response(ctx).Send(ctx, http.StatusOK, "ok")
 		}
 		t := middleware.RequireHeader(
 			regexp.MustCompile("^/foo"),
@@ -381,7 +381,7 @@ var _ = Describe("RequireHeader", func() {
 		req.Header.Set(headerName, "bogus")
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			newCtx = ctx
-			return goa.Response(ctx).Send(http.StatusOK, "ok")
+			return goa.Response(ctx).Send(ctx, http.StatusOK, "ok")
 		}
 		t := middleware.RequireHeader(
 			regexp.MustCompile("^/baz"),

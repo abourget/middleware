@@ -67,7 +67,7 @@ func LogRequest(verbose bool) goa.Middleware {
 					logCtx := make([]goa.KV, len(r.Params))
 					i := 0
 					for k, v := range r.Params {
-						logCtx[i] = goa.KV{k, interface{}(v)}
+						logCtx[i] = goa.KV{k, interface{}(strings.Join(v, ", "))}
 						i++
 					}
 					goa.Info(ctx, "params", logCtx...)
@@ -262,7 +262,7 @@ func RequireHeader(
 					err = h(ctx, rw, req)
 				} else {
 					resp := goa.Response(ctx)
-					err = resp.Send(failureStatus, http.StatusText(failureStatus))
+					err = resp.Send(ctx, failureStatus, http.StatusText(failureStatus))
 				}
 			} else {
 				err = h(ctx, rw, req)

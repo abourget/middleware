@@ -69,7 +69,7 @@ var _ = Describe("JWT Middleware", func() {
 		req.Header.Set("Authorization", "bearer "+tokenString)
 		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
 			ctx = c
-			return goa.Response(c).Send(200, "ok")
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
 		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
@@ -83,7 +83,7 @@ var _ = Describe("JWT Middleware", func() {
 		req.Header.Set("Authorization", "bearer "+tokenString)
 		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
 			ctx = c
-			return goa.Response(c).Send(200, "ok")
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
 		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
@@ -106,7 +106,7 @@ var _ = Describe("JWT Middleware", func() {
 		}
 		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
 			ctx = c
-			return goa.Response(c).Send(200, "ok")
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
 		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())

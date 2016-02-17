@@ -161,10 +161,10 @@ func Middleware(spec *Specification) goa.Middleware {
 			}
 			token, err := GetToken(req, spec)
 			if err != nil {
-				return goa.Response(ctx).Send(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+				return goa.Response(ctx).Send(ctx, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 			}
 			if !token.Valid {
-				return goa.Response(ctx).Send(http.StatusUnauthorized, "Invalid Token")
+				return goa.Response(ctx).Send(ctx, http.StatusUnauthorized, "Invalid Token")
 			}
 
 			ctx = context.WithValue(ctx, JWTKey, token)
