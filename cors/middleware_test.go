@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/goadesign/goa"
 	"github.com/goadesign/middleware/cors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
 var _ = Describe("Middleware", func() {
@@ -25,12 +26,15 @@ var _ = Describe("Middleware", func() {
 		portIndex := 1
 
 		JustBeforeEach(func() {
-			goa.Log.SetHandler(log15.DiscardHandler())
+			goa.Log = nil
 			service = goa.NewGraceful("", false).(*goa.GracefulApplication)
 			spec, err := cors.New(dsl)
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
-			h := func(ctx *goa.Context) error { return ctx.Respond(200, nil) }
+			h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+				goa.Response(ctx).WriteHeader(200)
+				return nil
+			}
 			ctrl := service.NewController("test")
 			service.ServeMux().Handle(method, path, ctrl.HandleFunc("", h, nil))
 			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler, nil))
@@ -131,7 +135,10 @@ var _ = Describe("Middleware", func() {
 
 				Context("with an OPTIONS action", func() {
 					BeforeEach(func() {
-						optionsHandler = func(ctx *goa.Context) error { return ctx.Respond(200, nil) }
+						optionsHandler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+							goa.Response(ctx).WriteHeader(200)
+							return nil
+						}
 					})
 
 					It("sets the Acess-Control-Allow-Methods header when OPTION actions exist", func() {

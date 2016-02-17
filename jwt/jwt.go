@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/goadesign/goa"
 )
@@ -114,10 +116,10 @@ type Specification struct {
 }
 
 // GetToken extracts the JWT token from the request if there is one.
-func GetToken(ctx *goa.Context, spec *Specification) (token *jwt.Token, err error) {
+func GetToken(req *http.Request, spec *Specification) (token *jwt.Token, err error) {
 	var found bool
 	var tok string
-	header := ctx.Request().Header.Get(spec.TokenHeader)
+	header := req.Header.Get(spec.TokenHeader)
 
 	if header != "" {
 		parts := strings.Split(header, " ")
@@ -129,7 +131,7 @@ func GetToken(ctx *goa.Context, spec *Specification) (token *jwt.Token, err erro
 		found = true
 	}
 	if !found && spec.AllowParam {
-		tok = ctx.Request().URL.Query().Get(spec.TokenParam)
+		tok = req.URL.Query().Get(spec.TokenParam)
 	}
 	if tok == "" {
 		err = fmt.Errorf("no token")
@@ -151,22 +153,22 @@ func Middleware(spec *Specification) goa.Middleware {
 		spec.TokenParam = "token"
 	}
 	return func(h goa.Handler) goa.Handler {
-		return func(ctx *goa.Context) error {
+		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			// If AuthOptions is false, and this is an OPTIONS request
 			// just let the request fly
-			if !spec.AuthOptions && ctx.Request().Method == "OPTIONS" {
-				return h(ctx)
+			if !spec.AuthOptions && req.Method == "OPTIONS" {
+				return h(ctx, rw, req)
 			}
-			token, err := GetToken(ctx, spec)
+			token, err := GetToken(req, spec)
 			if err != nil {
-				return ctx.Respond(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+				return goa.Response(ctx).Send(ctx, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 			}
 			if !token.Valid {
-				return ctx.Respond(http.StatusUnauthorized, "Invalid Token")
+				return goa.Response(ctx).Send(ctx, http.StatusUnauthorized, "Invalid Token")
 			}
 
-			ctx.SetValue(JWTKey, token)
-			return h(ctx)
+			ctx = context.WithValue(ctx, JWTKey, token)
+			return h(ctx, rw, req)
 		}
 
 	}

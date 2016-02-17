@@ -3,9 +3,10 @@ package jwt_test
 import (
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
 
 	jwtg "github.com/dgrijalva/jwt-go"
 	"github.com/goadesign/goa"
@@ -22,26 +23,24 @@ var rsaSampleKey, _ = ioutil.ReadFile("test/sample_key")
 var rsaSampleKeyPub, _ = ioutil.ReadFile("test/sample_key.pub")
 
 var _ = Describe("JWT Middleware", func() {
-	var ctx *goa.Context
+	var ctx context.Context
 	var spec *jwt.Specification
 	var req *http.Request
-	var err error
+	var rw http.ResponseWriter
 	var token *jwtg.Token
 	var tokenString string
-	params := url.Values{"param": []string{"value"}, "query": []string{"qvalue"}}
-	payload := map[string]interface{}{"payload": 42}
 	validFunc := func(token *jwtg.Token) (interface{}, error) {
 		return signingKey, nil
 	}
 
 	BeforeEach(func() {
+		var err error
 		req, err = http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
-		rw := new(TestResponseWriter)
+		rw = new(TestResponseWriter)
 		s := goa.New("test")
 		s.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
-		ctx = goa.NewContext(nil, s, req, rw, params)
-		ctx.SetPayload(payload)
+		ctx = goa.NewContext(nil, s, rw, req, nil)
 		spec = &jwt.Specification{
 			AllowParam:     true,
 			ValidationFunc: validFunc,
@@ -54,45 +53,41 @@ var _ = Describe("JWT Middleware", func() {
 	})
 
 	It("requires a jwt token be present", func() {
-
-		h := func(ctx *goa.Context) error {
-			ctx.Respond(200, "ok")
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			rw.WriteHeader(200)
+			rw.Write([]byte("ok"))
 			return nil
 		}
 		jw := jwt.Middleware(spec)(h)
-		Ω(jw(ctx)).ShouldNot(HaveOccurred())
-		Ω(ctx.ResponseStatus()).Should(Equal(http.StatusUnauthorized))
+		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
+		Ω(goa.Response(ctx).Status).Should(Equal(http.StatusUnauthorized))
 
 	})
 
 	It("returns the jwt token that was sent as a header", func() {
 
 		req.Header.Set("Authorization", "bearer "+tokenString)
-		h := func(ctx *goa.Context) error {
-			ctx.Respond(200, "ok")
-			return nil
+		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
+			ctx = c
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
-		Ω(jw(ctx)).ShouldNot(HaveOccurred())
-		Ω(ctx.ResponseStatus()).Should(Equal(http.StatusOK))
+		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
+		Ω(goa.Response(ctx).Status).Should(Equal(http.StatusOK))
 		tok, err := jwtg.Parse(tokenString, validFunc)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(ctx.Value(jwt.JWTKey)).Should(Equal(tok))
-		// Are these negative tests necessary?  If the above test passes
-		// this one can't pass, right?
-		Ω(ctx.Value(jwt.JWTKey)).ShouldNot(Equal("bearer TOKEN"))
 	})
 
 	It("returns the custom claims", func() {
-
 		req.Header.Set("Authorization", "bearer "+tokenString)
-		h := func(ctx *goa.Context) error {
-			ctx.Respond(200, "ok")
-			return nil
+		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
+			ctx = c
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
-		Ω(jw(ctx)).ShouldNot(HaveOccurred())
-		Ω(ctx.ResponseStatus()).Should(Equal(http.StatusOK))
+		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
+		Ω(goa.Response(ctx).Status).Should(Equal(http.StatusOK))
 		tok, err := jwtg.Parse(tokenString, validFunc)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(ctx.Value(jwt.JWTKey)).Should(Equal(tok))
@@ -102,28 +97,23 @@ var _ = Describe("JWT Middleware", func() {
 	})
 
 	It("returns the jwt token that was sent as a querystring", func() {
+		var err error
 		req, err = http.NewRequest("POST", "/goo?token="+tokenString, strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
-		rw := new(TestResponseWriter)
-		ctx = goa.NewContext(nil, goa.New("test"), req, rw, params)
-		ctx.SetPayload(payload)
 		spec = &jwt.Specification{
 			AllowParam:     true,
 			ValidationFunc: validFunc,
 		}
-		h := func(ctx *goa.Context) error {
-			ctx.Respond(200, "ok")
-			return nil
+		h := func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
+			ctx = c
+			return goa.Response(c).Send(ctx, 200, "ok")
 		}
 		jw := jwt.Middleware(spec)(h)
-		Ω(jw(ctx)).ShouldNot(HaveOccurred())
-		Ω(ctx.ResponseStatus()).Should(Equal(http.StatusOK))
+		Ω(jw(ctx, rw, req)).ShouldNot(HaveOccurred())
+		Ω(goa.Response(ctx).Status).Should(Equal(http.StatusOK))
 		tok, err := jwtg.Parse(tokenString, validFunc)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(ctx.Value(jwt.JWTKey)).Should(Equal(tok))
-		// Are these negative tests necessary?  If the above test passes
-		// this one can't pass, right?
-		Ω(ctx.Value(jwt.JWTKey)).ShouldNot(Equal("TOKEN"))
 	})
 
 })
