@@ -148,6 +148,7 @@ func (res *ResourceDefinition) FillHeaders(origin string, dest http.Header) {
 	}
 }
 
+// OriginAllowed returns true if the origin is allowed for the resource.
 func (res *ResourceDefinition) OriginAllowed(origin string) bool {
 	if res.Origin != "" {
 		return res.Origin == "*" || res.Origin == origin
