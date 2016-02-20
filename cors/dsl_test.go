@@ -1,6 +1,8 @@
 package cors_test
 
 import (
+	"strings"
+
 	"github.com/goadesign/middleware/cors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,7 +70,7 @@ var _ = Describe("valid CORS DSL", func() {
 				Ω(spec[0]).ShouldNot(BeNil())
 				Ω(spec[0].Headers).Should(HaveLen(len(headers)))
 				for i, h := range spec[0].Headers {
-					Ω(h).Should(Equal(headers[i]))
+					Ω(h).Should(Equal(strings.ToLower(headers[i])))
 				}
 			})
 		})

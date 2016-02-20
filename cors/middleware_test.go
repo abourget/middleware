@@ -32,12 +32,14 @@ var _ = Describe("Middleware", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
 			h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				goa.Response(ctx).WriteHeader(200)
+				rw.WriteHeader(200)
 				return nil
 			}
 			ctrl := service.NewController("test")
 			service.ServeMux().Handle(method, path, ctrl.HandleFunc("", h, nil))
-			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler, nil))
+			if optionsHandler != nil {
+				service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler, nil))
+			}
 			cors.MountPreflightController(service, spec)
 			portIndex++
 			port := 54511 + portIndex
@@ -151,6 +153,35 @@ var _ = Describe("Middleware", func() {
 						Ω(resp.StatusCode).Should(Equal(200))
 						Ω(resp.Header).Should(HaveKey("Access-Control-Allow-Methods"))
 					})
+
+				})
+			})
+
+			Context("using a CORS preflight request with header access request", func() {
+				const header = "foo"
+
+				BeforeEach(func() {
+					dsl = func() {
+						cors.Origin("http://authorized.com", func() {
+							cors.Resource("/", func() {
+								cors.Methods("GET")
+								cors.Headers(header)
+							})
+						})
+					}
+				})
+
+				It("sets the Acess-Control-Allow-Headers header when OPTION actions exist", func() {
+					req, err := http.NewRequest("OPTIONS", url, nil)
+					Ω(err).ShouldNot(HaveOccurred())
+					req.Header.Set("Origin", "http://authorized.com")
+					req.Header.Set("Access-Control-Request-Method", "GET")
+					req.Header.Set("Access-Control-Request-Headers", header)
+					resp, err := http.DefaultClient.Do(req)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(resp.StatusCode).Should(Equal(200))
+					Ω(resp.Header).Should(HaveKey("Access-Control-Allow-Headers"))
+					Ω(resp.Header["Access-Control-Allow-Headers"]).Should(Equal([]string{header}))
 				})
 
 			})

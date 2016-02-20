@@ -132,7 +132,9 @@ func Headers(headers ...string) {
 		dslErrors = append(dslErrors, fmt.Errorf("invalid use of Headers, must define Origin and Resource first"))
 	} else {
 		res := spec[len(spec)-1]
-		res.Headers = append(res.Headers, headers...)
+		for _, h := range headers {
+			res.Headers = append(res.Headers, strings.ToLower(h))
+		}
 	}
 }
 

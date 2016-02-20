@@ -36,11 +36,11 @@ func Middleware(spec Specification) goa.Middleware {
 				originHeader = origin
 				res = spec.RequestResource(ctx, origin)
 				if res == nil {
-					goto handleCORS
+					goto handleRequest
 				}
 				acMethod := strings.ToUpper(header.Get(acRequestMethod))
 				if req.Method != "OPTIONS" || acMethod == "" {
-					goto handleCORS
+					goto handleRequest
 				}
 				found := false
 				for _, m := range res.Methods {
@@ -50,10 +50,18 @@ func Middleware(spec Specification) goa.Middleware {
 					}
 				}
 				if !found {
-					goto handleCORS
+					goto handleRequest
 				}
 				// We are responding to a preflight request.
 				headers := header[acRequestHeaders]
+				var splat []string
+				for _, h := range headers {
+					hs := strings.Split(h, ",")
+					for _, s := range hs {
+						splat = append(splat, strings.TrimSpace(s))
+					}
+				}
+				headers = splat
 				if len(headers) > 0 {
 					ok := false
 					for _, h := range headers {
@@ -68,24 +76,18 @@ func Middleware(spec Specification) goa.Middleware {
 						}
 					}
 					if !ok {
-						goto handleCORS
+						goto handleRequest
 					}
 				}
-				resp := goa.Response(ctx)
-				resp.Header().Set("Content-Type", "text/plain")
 				if res.Origin == "*" && !res.Credentials {
 					originHeader = "*"
 				}
-				res.FillHeaders(originHeader, resp.Header())
-				if reqHeaders := header[acRequestHeaders]; reqHeaders != nil {
-					resp.Header().Set(acAllowHeaders, strings.Join(reqHeaders, ", "))
-				}
-				resp.WriteHeader(200)
+				rw.Header().Set(acAllowHeaders, strings.Join(headers, ", "))
 			}
-		handleCORS:
+		handleRequest:
 			if res != nil {
 				// Apply CORS headers if CORS request
-				res.FillHeaders(originHeader, goa.Response(ctx).Header())
+				res.FillHeaders(originHeader, rw.Header())
 			} else {
 				res = spec.PathResource(req.URL.Path)
 			}
@@ -118,32 +120,34 @@ func MountPreflightController(service goa.Service, spec Specification) {
 		handle := service.ServeMux().Lookup("OPTIONS", path)
 		if handle == nil {
 			h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				goa.Response(ctx).WriteHeader(200)
+				// The middleware did all the work of checking already
+				rw.Header().Set("Content-Type", "text/plain")
+				rw.WriteHeader(200)
 				return nil
 			}
+			wrapped := Middleware(spec)(h)
 			ctrl := service.NewController("cors")
-			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", h, nil))
+			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", wrapped, nil))
 		}
 	}
 }
 
 // FillHeaders initializes the given header with the resource CORS headers. origin is the request
 // origin.
-func (res *ResourceDefinition) FillHeaders(origin string, header http.Header) {
-	header.Set(acAllowOrigin, origin)
-	header.Set(acAllowMethods, strings.Join(res.Methods, ", "))
+func (res *ResourceDefinition) FillHeaders(origin string, dest http.Header) {
+	dest.Set(acAllowOrigin, origin)
+	dest.Set(acAllowMethods, strings.Join(res.Methods, ", "))
 	if len(res.Expose) > 0 {
-		header.Set(acExposeHeaders, strings.Join(res.Expose, ", "))
+		dest.Set(acExposeHeaders, strings.Join(res.Expose, ", "))
 	}
 	if res.MaxAge > 0 {
-		header.Set(acMaxAge, strconv.Itoa(res.MaxAge))
+		dest.Set(acMaxAge, strconv.Itoa(res.MaxAge))
 	}
 	if res.Credentials {
-		header.Set(acAllowCredentials, "true")
+		dest.Set(acAllowCredentials, "true")
 	}
 }
 
-// OriginAllowed returns true if the resource is accessible to the given origin.
 func (res *ResourceDefinition) OriginAllowed(origin string) bool {
 	if res.Origin != "" {
 		return res.Origin == "*" || res.Origin == origin
