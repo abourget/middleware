@@ -107,7 +107,7 @@ func Middleware(spec Specification) goa.Middleware {
 }
 
 // MountPreflightController mounts the handlers for the CORS preflight requests onto service.
-func MountPreflightController(service goa.Service, spec Specification) {
+func MountPreflightController(service *goa.Service, spec Specification) {
 	for _, res := range spec {
 		path := res.Path
 		if res.IsPathPrefix {

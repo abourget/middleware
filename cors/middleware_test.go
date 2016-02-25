@@ -21,13 +21,13 @@ var _ = Describe("Middleware", func() {
 		var path string
 		var optionsHandler goa.Handler
 
-		var service *goa.Service
+		var service *goa.GracefulService
 		var url string
 		portIndex := 1
 
 		JustBeforeEach(func() {
 			goa.Log = nil
-			service = goa.New("")
+			service = goa.NewGraceful("", false)
 			spec, err := cors.New(dsl)
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
@@ -40,7 +40,7 @@ var _ = Describe("Middleware", func() {
 			if optionsHandler != nil {
 				service.Mux.Handle("OPTIONS", path, ctrl.MuxHandler("", optionsHandler, nil))
 			}
-			cors.MountPreflightController(*service, spec)
+			cors.MountPreflightController(service.Service, spec)
 			portIndex++
 			port := 54511 + portIndex
 			url = fmt.Sprintf("http://localhost:%d", port)
@@ -49,6 +49,10 @@ var _ = Describe("Middleware", func() {
 			// to start listening or risk tests failing because sendind requests too
 			// early.
 			time.Sleep(time.Duration(100) * time.Millisecond)
+		})
+
+		AfterEach(func() {
+			service.Shutdown()
 		})
 
 		Context("handling GET requests", func() {
