@@ -21,13 +21,13 @@ var _ = Describe("Middleware", func() {
 		var path string
 		var optionsHandler goa.Handler
 
-		var service *goa.GracefulApplication
+		var service *goa.GracefulService
 		var url string
 		portIndex := 1
 
 		JustBeforeEach(func() {
 			goa.Log = nil
-			service = goa.NewGraceful("", false).(*goa.GracefulApplication)
+			service = goa.NewGraceful("", false)
 			spec, err := cors.New(dsl)
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
@@ -36,11 +36,11 @@ var _ = Describe("Middleware", func() {
 				return nil
 			}
 			ctrl := service.NewController("test")
-			service.ServeMux().Handle(method, path, ctrl.HandleFunc("", h, nil))
+			service.Mux.Handle(method, path, ctrl.MuxHandler("", h, nil))
 			if optionsHandler != nil {
-				service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("", optionsHandler, nil))
+				service.Mux.Handle("OPTIONS", path, ctrl.MuxHandler("", optionsHandler, nil))
 			}
-			cors.MountPreflightController(service, spec)
+			cors.MountPreflightController(service.Service, spec)
 			portIndex++
 			port := 54511 + portIndex
 			url = fmt.Sprintf("http://localhost:%d", port)

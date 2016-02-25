@@ -107,7 +107,7 @@ func Middleware(spec Specification) goa.Middleware {
 }
 
 // MountPreflightController mounts the handlers for the CORS preflight requests onto service.
-func MountPreflightController(service goa.Service, spec Specification) {
+func MountPreflightController(service *goa.Service, spec Specification) {
 	for _, res := range spec {
 		path := res.Path
 		if res.IsPathPrefix {
@@ -117,7 +117,7 @@ func MountPreflightController(service goa.Service, spec Specification) {
 				path += "/*cors"
 			}
 		}
-		handle := service.ServeMux().Lookup("OPTIONS", path)
+		handle := service.Mux.Lookup("OPTIONS", path)
 		if handle == nil {
 			h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 				// The middleware did all the work of checking already
@@ -127,7 +127,7 @@ func MountPreflightController(service goa.Service, spec Specification) {
 			}
 			wrapped := Middleware(spec)(h)
 			ctrl := service.NewController("cors")
-			service.ServeMux().Handle("OPTIONS", path, ctrl.HandleFunc("preflight", wrapped, nil))
+			service.Mux.Handle("OPTIONS", path, ctrl.MuxHandler("preflight", wrapped, nil))
 		}
 	}
 }

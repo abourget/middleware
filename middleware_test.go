@@ -61,14 +61,14 @@ var _ = Describe("NewMiddleware", func() {
 		var params url.Values
 
 		BeforeEach(func() {
-			service = goa.New("test")
+			service = *goa.New("test")
 			service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
 			var err error
 			req, err = http.NewRequest("GET", "/goo", nil)
 			Ω(err).ShouldNot(HaveOccurred())
 			rw = new(testResponseWriter)
 			params = url.Values{"query": []string{"value"}}
-			ctx = goa.NewContext(nil, service, rw, req, params)
+			ctx = goa.NewContext(nil, &service, rw, req, params)
 			Ω(goa.Response(ctx).Status).Should(Equal(0))
 		})
 
