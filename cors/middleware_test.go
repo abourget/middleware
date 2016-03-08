@@ -26,8 +26,8 @@ var _ = Describe("Middleware", func() {
 		portIndex := 1
 
 		JustBeforeEach(func() {
-			goa.Log = nil
 			service = goa.NewGraceful("", false)
+			service.UseLogger(nil)
 			spec, err := cors.New(dsl)
 			Ω(err).ShouldNot(HaveOccurred())
 			service.Use(cors.Middleware(spec))
