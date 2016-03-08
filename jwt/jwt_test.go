@@ -39,8 +39,9 @@ var _ = Describe("JWT Middleware", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = new(TestResponseWriter)
 		s := goa.New("test")
-		s.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
-		ctx = goa.NewContext(nil, s, rw, req, nil)
+		ctrl := s.NewController("test")
+		s.Encoder(goa.NewJSONEncoder, "*/*")
+		ctx = goa.NewContext(ctrl.Context, rw, req, nil)
 		spec = &jwt.Specification{
 			AllowParam:     true,
 			ValidationFunc: validFunc,
