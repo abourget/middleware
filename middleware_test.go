@@ -16,6 +16,18 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func newService(logger goa.Logger) *goa.Service {
+	service := goa.New("test")
+	service.Encoder(goa.NewJSONEncoder, "*/*")
+	service.UseLogger(logger)
+	return service
+}
+
+func newContext(service *goa.Service, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
+	ctrl := service.NewController("test")
+	return goa.NewContext(ctrl.Context, rw, req, params)
+}
+
 var _ = Describe("NewMiddleware", func() {
 	var input interface{}
 	var middleware goa.Middleware
@@ -54,21 +66,20 @@ var _ = Describe("NewMiddleware", func() {
 	})
 
 	Context("with a context", func() {
-		var service goa.Service
+		var service *goa.Service
 		var ctx context.Context
 		var req *http.Request
 		var rw http.ResponseWriter
 		var params url.Values
 
 		BeforeEach(func() {
-			service = *goa.New("test")
-			service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
+			service = newService(nil)
 			var err error
 			req, err = http.NewRequest("GET", "/goo", nil)
 			Ω(err).ShouldNot(HaveOccurred())
 			rw = new(testResponseWriter)
 			params = url.Values{"query": []string{"value"}}
-			ctx = goa.NewContext(nil, &service, rw, req, params)
+			ctx = newContext(service, rw, req, params)
 			Ω(goa.Response(ctx).Status).Should(Equal(0))
 		})
 
@@ -168,17 +179,17 @@ var _ = Describe("LogRequest", func() {
 	payload := map[string]interface{}{"payload": 42}
 
 	BeforeEach(func() {
-		service := goa.New("test")
-		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
+		logger = new(testLogger)
+		service := newService(logger)
+
 		var err error
 		req, err = http.NewRequest("POST", "/goo?param=value", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = new(testResponseWriter)
 		params = url.Values{"query": []string{"value"}}
-		ctx = goa.NewContext(nil, service, rw, req, params)
+		ctrl := service.NewController("test")
+		ctx = goa.NewContext(ctrl.Context, rw, req, params)
 		goa.Request(ctx).Payload = payload
-		logger = new(testLogger)
-		goa.Log = logger
 	})
 
 	It("logs requests", func() {
@@ -186,31 +197,33 @@ var _ = Describe("LogRequest", func() {
 			return goa.Response(ctx).Send(ctx, 200, "ok")
 		}
 		lg := middleware.LogRequest(true)(h)
+		ctx, cancel := context.WithCancel(ctx)
 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-		Ω(logger.InfoEntries).Should(HaveLen(4))
+		cancel()
+		Eventually(func() interface{} { return logger.InfoEntries }).Should(HaveLen(4))
 
-		Ω(logger.InfoEntries[0].Data).Should(HaveLen(2))
-		Ω(logger.InfoEntries[0].Data[0].Key).Should(Equal("id"))
-		Ω(logger.InfoEntries[0].Data[1].Key).Should(Equal("POST"))
-		Ω(logger.InfoEntries[0].Data[1].Value).Should(Equal("/goo?param=value"))
+		Ω(logger.InfoEntries[0].Data).Should(HaveLen(4))
+		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("id"))
+		Ω(logger.InfoEntries[0].Data[2]).Should(Equal("POST"))
+		Ω(logger.InfoEntries[0].Data[3]).Should(Equal("/goo?param=value"))
 
-		Ω(logger.InfoEntries[1].Data).Should(HaveLen(2))
-		Ω(logger.InfoEntries[0].Data[0].Key).Should(Equal("id"))
-		Ω(logger.InfoEntries[1].Data[1].Key).Should(Equal("query"))
-		Ω(logger.InfoEntries[1].Data[1].Value).Should(Equal("value"))
+		Ω(logger.InfoEntries[1].Data).Should(HaveLen(4))
+		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("id"))
+		Ω(logger.InfoEntries[1].Data[2]).Should(Equal("query"))
+		Ω(logger.InfoEntries[1].Data[3]).Should(Equal("value"))
 
-		Ω(logger.InfoEntries[2].Data).Should(HaveLen(2))
-		Ω(logger.InfoEntries[0].Data[0].Key).Should(Equal("id"))
-		Ω(logger.InfoEntries[2].Data[1].Key).Should(Equal("payload"))
-		Ω(logger.InfoEntries[2].Data[1].Value).Should(Equal(42))
+		Ω(logger.InfoEntries[2].Data).Should(HaveLen(4))
+		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("id"))
+		Ω(logger.InfoEntries[2].Data[2]).Should(Equal("payload"))
+		Ω(logger.InfoEntries[2].Data[3]).Should(Equal(42))
 
-		Ω(logger.InfoEntries[3].Data).Should(HaveLen(4))
-		Ω(logger.InfoEntries[0].Data[0].Key).Should(Equal("id"))
-		Ω(logger.InfoEntries[3].Data[1].Key).Should(Equal("status"))
-		Ω(logger.InfoEntries[3].Data[2].Key).Should(Equal("bytes"))
-		Ω(logger.InfoEntries[3].Data[1].Value).Should(Equal(200))
-		Ω(logger.InfoEntries[3].Data[2].Value).Should(Equal(5))
-		Ω(logger.InfoEntries[3].Data[3].Key).Should(Equal("time"))
+		Ω(logger.InfoEntries[3].Data).Should(HaveLen(8))
+		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("id"))
+		Ω(logger.InfoEntries[3].Data[2]).Should(Equal("status"))
+		Ω(logger.InfoEntries[3].Data[3]).Should(Equal(200))
+		Ω(logger.InfoEntries[3].Data[4]).Should(Equal("bytes"))
+		Ω(logger.InfoEntries[3].Data[5]).Should(Equal(5))
+		Ω(logger.InfoEntries[3].Data[6]).Should(Equal("time"))
 	})
 })
 
@@ -223,14 +236,15 @@ var _ = Describe("LogResponse", func() {
 	responseText := "some response data to be logged"
 
 	BeforeEach(func() {
+		logger = new(testLogger)
+		service := newService(logger)
+
 		var err error
 		req, err = http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = new(testResponseWriter)
 		params = url.Values{"query": []string{"value"}}
-		ctx = goa.NewContext(nil, goa.New("test"), rw, req, params)
-		logger = new(testLogger)
-		goa.Log = logger
+		ctx = newContext(service, rw, req, params)
 	})
 
 	It("logs responses", func() {
@@ -243,9 +257,9 @@ var _ = Describe("LogResponse", func() {
 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
 		Ω(logger.InfoEntries).Should(HaveLen(1))
 
-		Ω(logger.InfoEntries[0].Data).Should(HaveLen(1))
-		Ω(logger.InfoEntries[0].Data[0].Key).Should(Equal("raw"))
-		Ω(logger.InfoEntries[0].Data[0].Value).Should(Equal(responseText))
+		Ω(logger.InfoEntries[0].Data).Should(HaveLen(2))
+		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("body"))
+		Ω(logger.InfoEntries[0].Data[1]).Should(Equal(responseText))
 	})
 })
 
@@ -257,15 +271,16 @@ var _ = Describe("RequestID", func() {
 	var params url.Values
 
 	BeforeEach(func() {
+		service := newService(nil)
+
 		var err error
 		req, err = http.NewRequest("GET", "/goo", nil)
 		Ω(err).ShouldNot(HaveOccurred())
 		req.Header.Set("X-Request-Id", reqID)
 		rw = new(testResponseWriter)
-		service := goa.New("test")
 		params = url.Values{"query": []string{"value"}}
-		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
-		ctx = goa.NewContext(nil, service, rw, req, params)
+		service.Encoder(goa.NewJSONEncoder, "*/*")
+		ctx = newContext(service, rw, req, params)
 	})
 
 	It("sets the request ID in the context", func() {
@@ -282,15 +297,15 @@ var _ = Describe("RequestID", func() {
 
 var _ = Describe("Recover", func() {
 	It("recovers", func() {
-		goa.Log = nil
+		service := newService(nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			panic("boom")
 		}
 		rg := middleware.Recover()(h)
-		service := goa.New("test")
-		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
+		service.Encoder(goa.NewJSONEncoder, "*/*")
 		rw := new(testResponseWriter)
-		err := rg(goa.NewContext(nil, service, rw, nil, nil), rw, nil)
+		ctx := newContext(service, rw, nil, nil)
+		err := rg(ctx, rw, nil)
 		Ω(err).Should(HaveOccurred())
 		Ω(err.Error()).Should(Equal("panic: boom"))
 	})
@@ -298,13 +313,12 @@ var _ = Describe("Recover", func() {
 
 var _ = Describe("Timeout", func() {
 	It("sets a deadline", func() {
+		service := newService(nil)
+
 		req, err := http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw := new(testResponseWriter)
-		service := goa.New("test")
-		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
-
-		ctx := goa.NewContext(nil, service, rw, req, nil)
+		ctx := newContext(service, rw, req, nil)
 		var newCtx context.Context
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			newCtx = ctx
@@ -326,12 +340,11 @@ var _ = Describe("RequireHeader", func() {
 
 	BeforeEach(func() {
 		var err error
-		service := goa.New("test")
-		service.SetEncoder(goa.JSONEncoderFactory(), true, "*/*")
+		service := newService(nil)
 		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = new(testResponseWriter)
-		ctx = goa.NewContext(nil, service, rw, req, nil)
+		ctx = newContext(service, rw, req, nil)
 	})
 
 	It("matches a header value", func() {
@@ -415,7 +428,7 @@ var _ = Describe("RequireHeader", func() {
 
 type logEntry struct {
 	Msg  string
-	Data []goa.KV
+	Data []interface{}
 }
 
 type testLogger struct {
@@ -423,12 +436,12 @@ type testLogger struct {
 	ErrorEntries []logEntry
 }
 
-func (t *testLogger) Info(ctx context.Context, msg string, data ...goa.KV) {
+func (t *testLogger) Info(msg string, data ...interface{}) {
 	e := logEntry{msg, data}
 	t.InfoEntries = append(t.InfoEntries, e)
 }
 
-func (t *testLogger) Error(ctx context.Context, msg string, data ...goa.KV) {
+func (t *testLogger) Error(msg string, data ...interface{}) {
 	e := logEntry{msg, data}
 	t.ErrorEntries = append(t.ErrorEntries, e)
 }

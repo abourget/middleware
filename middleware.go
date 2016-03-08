@@ -75,7 +75,7 @@ func LogRequest(verbose bool) goa.Middleware {
 				}
 				if r.ContentLength > 0 {
 					if mp, ok := r.Payload.(map[string]interface{}); ok {
-						logCtx := make([]interface{}, len(mp))
+						logCtx := make([]interface{}, 2*len(mp))
 						i := 0
 						for k, v := range mp {
 							logCtx[i] = k
@@ -89,17 +89,19 @@ func LogRequest(verbose bool) goa.Middleware {
 				}
 			}
 			err := h(ctx, rw, req)
-			select {
-			case <-ctx.Done():
-				switch ctx.Err() {
-				case context.DeadlineExceeded:
-					goa.Info(ctx, "timeout", "time", time.Since(startedAt).String())
-				default:
-					resp := goa.Response(ctx)
-					goa.Info(ctx, "completed", "status", resp.Status,
-						"bytes", resp.Length, "time", time.Since(startedAt).String())
+			go func() {
+				select {
+				case <-ctx.Done():
+					switch ctx.Err() {
+					case context.DeadlineExceeded:
+						goa.Info(ctx, "timeout", "time", time.Since(startedAt).String())
+					default:
+						resp := goa.Response(ctx)
+						goa.Info(ctx, "completed", "status", resp.Status,
+							"bytes", resp.Length, "time", time.Since(startedAt).String())
+					}
 				}
-			}
+			}()
 			return err
 		}
 	}

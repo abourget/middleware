@@ -49,7 +49,7 @@ var _ = Describe("Gzip", func() {
 			ParentHeader: http.Header{},
 		}
 
-		ctx = goa.NewContext(nil, goa.New("test"), rw, req, nil)
+		ctx = goa.NewContext(nil, rw, req, nil)
 		goa.Request(ctx).Payload = payload
 	})
 
