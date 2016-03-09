@@ -46,5 +46,5 @@ lint:
 	fi
 
 test:
-	@ginkgo -r --randomizeAllSpecs --failOnPending --randomizeSuites --race -skipPackage vendor
+	@ginkgo -r --randomizeAllSpecs --failOnPending --randomizeSuites -skipPackage vendor
 
