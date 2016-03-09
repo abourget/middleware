@@ -197,10 +197,8 @@ var _ = Describe("LogRequest", func() {
 			return goa.Response(ctx).Send(ctx, 200, "ok")
 		}
 		lg := middleware.LogRequest(true)(h)
-		ctx, cancel := context.WithCancel(ctx)
 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-		cancel()
-		Eventually(func() interface{} { return logger.InfoEntries }).Should(HaveLen(4))
+		Ω(logger.InfoEntries).Should(HaveLen(4))
 
 		Ω(logger.InfoEntries[0].Data).Should(HaveLen(4))
 		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("id"))

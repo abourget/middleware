@@ -89,19 +89,9 @@ func LogRequest(verbose bool) goa.Middleware {
 				}
 			}
 			err := h(ctx, rw, req)
-			go func() {
-				select {
-				case <-ctx.Done():
-					switch ctx.Err() {
-					case context.DeadlineExceeded:
-						goa.Info(ctx, "timeout", "time", time.Since(startedAt).String())
-					default:
-						resp := goa.Response(ctx)
-						goa.Info(ctx, "completed", "status", resp.Status,
-							"bytes", resp.Length, "time", time.Since(startedAt).String())
-					}
-				}
-			}()
+			resp := goa.Response(ctx)
+			goa.Info(ctx, "completed", "status", resp.Status,
+				"bytes", resp.Length, "time", time.Since(startedAt).String())
 			return err
 		}
 	}
